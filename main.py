@@ -26,7 +26,12 @@ def generate_brown_noise(sample_rate: int = 44100, duration: int = 1) -> None:
     brown_noise[0] = white_noise[0]
 
     for i in range(1, duration * sample_rate):
-        brown_noise[i] = brown_noise[i - 1] + white_noise[i]
+        temp = brown_noise[i - 1] + white_noise[i]
+        if temp < -1:
+            temp += 1
+        if temp > 1:
+            temp -= 1
+        brown_noise[i] = temp
 
     brown_noise = brown_noise.flatten()
     scaled = np.int16(
