@@ -1,16 +1,9 @@
+#!/usr/env python
 import numpy as np
 from scipy.io.wavfile import write
-from time import perf_counter
+from scipy.signal import butter, lfilter
 
 MAX_INT_16 = 32767
-
-
-def get_white_noise(sample_rate: int = 44100, duration: int = 1) -> np.array:
-    white_noise = np.array([])
-    for i in range(duration):
-        white_noise = np.append(white_noise, np.random.uniform(-1, 1, sample_rate))
-    white_noise = white_noise.flatten()
-    return white_noise
 
 
 def generate_brown_noise(sample_rate: int = 44100, duration: int = 1) -> None:
@@ -37,10 +30,30 @@ def generate_brown_noise(sample_rate: int = 44100, duration: int = 1) -> None:
     scaled = np.int16(
         brown_noise / np.max(np.abs(brown_noise)) * MAX_INT_16
     )  # scale to max int 16
+    filtered = low_pass_filter(scaled, 10000, sample_rate, order=6)
     try:
         write("brown_noise.wav", sample_rate, scaled)
+        write("brown_noise_filtered.wav", sample_rate, filtered)
     except Exception as e:
         raise Exception(f"Failed to save file: {e}")
+
+
+def get_white_noise(sample_rate: int = 44100, duration: int = 1) -> np.array:
+    white_noise = np.array([])
+    for i in range(duration):
+        white_noise = np.append(white_noise, np.random.uniform(-1, 1, sample_rate))
+    white_noise = white_noise.flatten()
+    return white_noise
+
+
+def low_pass_filter(data, cutoff, fs, order: int = 5):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
+
+
+def butter_lowpass(cutoff, fs, order: int = 5):
+    return butter(order, cutoff, fs=fs, btype="low", analog=False)
 
 
 def main():
@@ -48,12 +61,7 @@ def main():
     sample_rate = 44100
     duration = 120
 
-    start_time = perf_counter()
     generate_brown_noise(sample_rate, duration)
-    end_time = perf_counter()
-    print(
-        f"Time took to run sample rate: {sample_rate}Hz for duration {duration}s {end_time - start_time:.6f} seconds"
-    )
 
 
 if __name__ == "__main__":
