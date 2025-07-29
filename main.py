@@ -2,11 +2,18 @@
 import numpy as np
 from scipy.io.wavfile import write
 from scipy.signal import butter, lfilter
+from argparse import ArgumentParser
 
 MAX_INT_16 = 32767
 
 
-def generate_brown_noise(sample_rate: int = 44100, duration: int = 1) -> None:
+def generate_brown_noise(
+    sample_rate: int = 44100,
+    duration: int = 1,
+    cutoff: int = 10000,
+    order: int = 6,
+    filepath: str = "brown_noise.wav",
+) -> None:
     """Generate brown noise
     Parameters
     ----------
@@ -30,10 +37,9 @@ def generate_brown_noise(sample_rate: int = 44100, duration: int = 1) -> None:
     scaled = np.int16(
         brown_noise / np.max(np.abs(brown_noise)) * MAX_INT_16
     )  # scale to max int 16
-    filtered = low_pass_filter(scaled, 10000, sample_rate, order=6)
+    filtered = low_pass_filter(scaled, cutoff, sample_rate, order)
     try:
-        write("brown_noise.wav", sample_rate, scaled)
-        write("brown_noise_filtered.wav", sample_rate, filtered)
+        write(filepath, sample_rate, filtered)
     except Exception as e:
         raise Exception(f"Failed to save file: {e}")
 
@@ -46,22 +52,44 @@ def get_white_noise(sample_rate: int = 44100, duration: int = 1) -> np.array:
     return white_noise
 
 
-def low_pass_filter(data, cutoff, fs, order: int = 5):
+def low_pass_filter(data: np.array, cutoff: int, fs: float, order: int = 5):
     b, a = butter_lowpass(cutoff, fs, order=order)
     y = lfilter(b, a, data)
     return y
 
 
-def butter_lowpass(cutoff, fs, order: int = 5):
+def butter_lowpass(cutoff: int, fs: float, order: int = 5):
     return butter(order, cutoff, fs=fs, btype="low", analog=False)
 
 
 def main():
-    print("Hello from brown-noise-generator!")
-    sample_rate = 44100
-    duration = 120
+    parser = ArgumentParser(
+        prog="Brown Noise Generator",
+        description="Generate brown noise on demand",
+    )
+    parser.add_argument(
+        "sample_rate", help="Noise sample rate in hz", type=int, default=44100
+    )
+    parser.add_argument("duration", help="Duration of the noise", type=int, default=5)
+    parser.add_argument(
+        "-c",
+        "--cutoff",
+        help="Cutoff in hz for low pass filter",
+        type=float,
+        default=10000,
+    )
+    parser.add_argument(
+        "-o", "--order", help="Order value for low pass filter", type=int, default=6
+    )
+    parser.add_argument("output_file", type=str, default="brown_noise.wav")
+    args = parser.parse_args()
+    print("Generating your noise...")
 
-    generate_brown_noise(sample_rate, duration)
+    generate_brown_noise(
+        args.sample_rate, args.duration, args.cutoff, args.order, args.output_file
+    )
+
+    print(f"Generated successfully. Saved to {args.output_file}")
 
 
 if __name__ == "__main__":
